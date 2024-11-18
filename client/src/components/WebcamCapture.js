@@ -513,23 +513,24 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 
-const WebcamCapture = ({ loggedInUsername }) => {
+const WebcamCapture = ({ loggedInUsername, gameSessionId, isCameraActive }) => {
   const videoRef = useRef(null);
   const [isCameraReady, setIsCameraReady] = useState(false);
 
   const uploadImage = async (imageBlob) => {
     const formData = new FormData();
-    formData.append('image', imageBlob, 'webcam_image.jpg'); // Ensure this matches the upload.single('image') in your server code
-    formData.append('username', loggedInUsername); // Include the logged-in username
+    formData.append('file', imageBlob, 'webcam_image.jpg');
+    formData.append('username', loggedInUsername); 
+    formData.append('gameSessionId', gameSessionId); // Include the game session ID
 
     try {
-      const uploadResponse = await fetch('http://localhost:5000/api/upload', {
+      const uploadResponse = await fetch('http://localhost:5000/upload', {
         method: 'POST',
         body: formData,
       });
 
       if (!uploadResponse.ok) {
-        throw new Error('Network response was not ok');
+        throw new Error('Failed to upload image: ' + (await uploadResponse.text()));
       }
 
       const data = await uploadResponse.json();
@@ -563,14 +564,20 @@ const WebcamCapture = ({ loggedInUsername }) => {
 
   useEffect(() => {
     const setupCamera = async () => {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: true,
-        });
-        videoRef.current.srcObject = stream;
-        setIsCameraReady(true);
-      } catch (error) {
-        console.error('Error accessing the camera:', error);
+      if (isCameraActive) {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+          videoRef.current.srcObject = stream;
+          setIsCameraReady(true);
+        } catch (error) {
+          console.error('Error accessing the camera:', error);
+        }
+      } else if (videoRef.current && videoRef.current.srcObject) {
+        const stream = videoRef.current.srcObject;
+        const tracks = stream.getTracks();
+        tracks.forEach((track) => track.stop());
+        videoRef.current.srcObject = null;
+        setIsCameraReady(false);
       }
     };
 
@@ -582,9 +589,15 @@ const WebcamCapture = ({ loggedInUsername }) => {
       }
     }, 3000);
 
-    return () => clearInterval(intervalId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isCameraReady]);
+    return () => {
+      clearInterval(intervalId);
+      if (videoRef.current && videoRef.current.srcObject) {
+        const stream = videoRef.current.srcObject;
+        const tracks = stream.getTracks();
+        tracks.forEach((track) => track.stop());
+      }
+    };
+  }, [isCameraActive, isCameraReady]);
 
   return (
     <div style={{ display: 'none' }}>

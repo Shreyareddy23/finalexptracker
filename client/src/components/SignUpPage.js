@@ -98,6 +98,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+
 const SignUpPage = () => {
   const [formData, setFormData] = useState({
     username: '',
@@ -147,7 +148,7 @@ const SignUpPage = () => {
       if (response.ok) {
         // On success, redirect to another page or show success message
         setSuccess('User created successfully!');
-        navigate('/word-puzzle');
+        
       } else {
         setError(data.message || 'Failed to sign up');
       }

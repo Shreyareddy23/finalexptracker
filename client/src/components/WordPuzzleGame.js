@@ -166,8 +166,10 @@
 
 // export default WordPuzzleGame;
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import '../styles/style8.css';
 import WebcamCapture from './WebcamCapture';
+import Confetti from 'react-confetti';
 
 const puzzles = [
   {
@@ -204,7 +206,9 @@ const affirmationMessages = [
   "You're amazing!",
 ];
 
-function WordPuzzleGame({loggedInUsername}) {
+function WordPuzzleGame({ loggedInUsername }) {
+  const location = useLocation();
+  const gameSessionId = location.state?.gameSessionId; // Access the game session ID
   const [currentPuzzle, setCurrentPuzzle] = useState(null);
   const [foundWords, setFoundWords] = useState(new Set());
   const [selectedLetters, setSelectedLetters] = useState([]);
@@ -213,6 +217,8 @@ function WordPuzzleGame({loggedInUsername}) {
   const [score, setScore] = useState(0);
   const [audio] = useState(new Audio());
   const [gameFinished, setGameFinished] = useState(false);
+  const [isCameraActive, setIsCameraActive] = useState(false); // State to control camera
+  const [showConfetti, setShowConfetti] = useState(false); // State for confetti
 
   useEffect(() => {
     if (currentPuzzle !== null && currentPuzzle < puzzles.length) {
@@ -227,6 +233,8 @@ function WordPuzzleGame({loggedInUsername}) {
       });
     } else if (currentPuzzle !== null) {
       setGameFinished(true);
+      setIsCameraActive(false); // Stop the camera when the game finishes
+      setShowConfetti(true); // Show confetti when the game ends
     }
   }, [currentPuzzle, audio]);
 
@@ -288,16 +296,27 @@ function WordPuzzleGame({loggedInUsername}) {
       setCurrentPuzzle(currentPuzzle + 1);
     } else {
       setGameFinished(true);
+      setIsCameraActive(false); // Stop the camera when finishing the last puzzle
+      setShowConfetti(true); // Trigger confetti when the game ends
     }
+  };
+
+  const handlePlayNow = () => {
+    setCurrentPuzzle(0);
+    setIsCameraActive(true); // Start the camera when the game starts
+    setShowConfetti(false); // Hide confetti before the game starts
   };
 
   return (
     <div className="app">
-      <WebcamCapture loggedInUsername={loggedInUsername} />
+      {showConfetti && <Confetti />}
+      
+      <WebcamCapture loggedInUsername={loggedInUsername} isCameraActive={isCameraActive} gameSessionId={gameSessionId} />
+      
       {currentPuzzle === null ? (
         <div id="splashScreen">
           <h1>Welcome to the Word Puzzle Game</h1>
-          <button onClick={() => setCurrentPuzzle(0)}>Play Now</button>
+          <button onClick={handlePlayNow}>Play Now</button>
         </div>
       ) : !gameFinished ? (
         <>

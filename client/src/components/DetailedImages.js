@@ -1,74 +1,81 @@
 import React, { useEffect, useState } from 'react';
+import axios from 'axios';
+import { useParams } from 'react-router-dom';
 
 const DetailedImages = () => {
+  const { sessionId } = useParams();  // Extract sessionId from URL
   const [detailedData, setDetailedData] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
 
   useEffect(() => {
-    const fetchDetailedAnalysis = async () => {
+    const fetchData = async () => {
       try {
-        const response = await fetch('http://localhost:5000/api/detailed-analysis');
-        if (!response.ok) {
-          throw new Error('Network response was not ok');
+        // Fetch detailed analysis for the specific sessionId
+        const response = await axios.get(`http://localhost:5000/api/detailed-analysis/${sessionId}`);
+        if (response.status === 200) {
+          setDetailedData(response.data);
+        } else {
+          throw new Error('Error fetching data');
         }
-        const data = await response.json();
-        setDetailedData(data);
       } catch (error) {
         console.error('Error fetching detailed analysis:', error);
-        setError(error.message);
       } finally {
         setLoading(false);
       }
     };
-    fetchDetailedAnalysis();
-  }, []);
 
-  if (loading) {
-    return <p>Loading...</p>;
-  }
+    fetchData();
+  }, [sessionId]);
 
-  if (error) {
-    return <p>Error: {error}</p>;
-  }
-
-  if (!detailedData || detailedData.length === 0) {
-    return <p>No image data available.</p>;
-  }
+  if (loading) return <p>Loading...</p>;
+  if (!detailedData.length) return <p>No images available for this session.</p>;
 
   return (
     <div>
-      <h1>Detailed Emotion Analysis</h1>
-      <div id="detailed-analysis">
-        {detailedData.map((entry, index) => (
-          <div key={index}>
-            <h2>Image: {entry.filename}</h2>
-            <img src={`http://localhost:5000/uploads/${entry.imagePath}`} alt={entry.filename} width="300" />
-            <table>
-              <thead>
-                <tr>
-                  <th>Emotion</th>
-                  <th>Score</th>
-                </tr>
-              </thead>
-              <tbody>
-                {Array.isArray(entry.analysisResult) && entry.analysisResult.length > 0 ? (
-                  entry.analysisResult.map((result, idx) => (
-                    <tr key={idx}>
-                      <td>{result.label}</td>
-                      <td>{result.score !== undefined && !isNaN(result.score) ? result.score.toFixed(2) : 'N/A'}</td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan="2">No analysis available</td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        ))}
-      </div>
+      <h1>Detailed Emotion Analysis for Session {sessionId}</h1>
+
+      {/* Render images and emotions for the selected session */}
+      {detailedData.map((user) => (
+        user.sessions.map((session) => (
+          session.gameSessionId === sessionId && (
+            <div key={session.gameSessionId}>
+              <h3>Game Session ID: {session.gameSessionId}</h3>
+
+              {session.imagesWithEmotions.map((image) => (
+                <div key={image.imagePath}>
+                  {/* Image and captured time displayed */}
+                  <div>
+                    <img
+                      src={`http://localhost:5000/uploads/${image.imagePath}`}
+                      alt={image.imagePath}
+                      width="300"
+                    />
+                    <h4>Captured At: {new Date(image.capturedAt).toLocaleString()}</h4>
+                  </div>
+
+                  {/* Emotion table */}
+                  <table border="1" style={{ marginTop: '10px' }}>
+                    <thead>
+                      <tr>
+                        <th>Emotion</th>
+                        <th>Score</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {image.emotions.map((emotion, idx) => (
+                        <tr key={idx}>
+                          <td>{emotion.label}</td>
+                          <td>{emotion.score}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ))}
+            </div>
+          )
+        ))
+      ))}
     </div>
   );
 };

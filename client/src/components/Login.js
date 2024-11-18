@@ -184,83 +184,61 @@ import { useNavigate, Link } from 'react-router-dom';
 import '../styles/Login.css';
 
 const Login = ({ onLogin }) => {
-  const [username, setUsername] = useState(''); 
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
-  const navigate = useNavigate(); 
+  const navigate = useNavigate();
 
-  // const handleSubmit = async (event) => {
-  //   event.preventDefault();
-
-  //   if (!username || !password) {
-  //     setErrorMessage('Please fill in all fields');
-  //     return;
-  //   }
-
-  //   try {
-  //     const response = await fetch('http://localhost:5000/api/login', {
-  //       method: 'POST',
-  //       headers: { 'Content-Type': 'application/json' },
-  //       body: JSON.stringify({ username, password }),
-  //     });
-
-  //     const data = await response.json();
-
-  //     if (response.ok) {
-  //       setErrorMessage('');
-
-  //       // Navigate based on user type
-  //       if (data.isAdmin) {
-  //         onLogin();
-  //         navigate('/admin-dashboard');
-  //       } else {
-  //         onLogin();
-  //         navigate('/word-puzzle');
-  //       }
-  //     } else {
-  //       setErrorMessage(data.message || 'Login failed');
-  //     }
-  //   } catch (error) {
-  //     setErrorMessage('An error occurred during login');
-  //   }
-  // };
   const handleSubmit = async (event) => {
     event.preventDefault();
-  
+
     if (!username || !password) {
       setErrorMessage('Please fill in all fields');
       return;
     }
-  
+
     try {
       const response = await fetch('http://localhost:5000/api/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password }),
       });
-  
+
       const data = await response.json();
-  
+
       if (response.ok) {
         setErrorMessage('');
-  
-        // Pass the username to onLogin so the parent can set it
-        onLogin(username); // Pass the username here
-  
-        // Navigate based on user type
-        if (data.isAdmin) {
+        onLogin(username);
+
+        // Check if the username ends with @admin before creating a game session
+        if (username.endsWith('@admin')) {
+          console.log('Redirecting to admin dashboard');  // Debugging statement
           navigate('/admin-dashboard');
         } else {
-          navigate('/word-puzzle');
+          // Create a game session if it's not an admin user
+          const gameSessionResponse = await fetch('http://localhost:5000/api/create-game-session', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username }),
+          });
+
+          const gameSessionData = await gameSessionResponse.json();
+
+          if (gameSessionResponse.ok) {
+            navigate('/word-puzzle', { state: { gameSessionId: gameSessionData.gameSessionId } });
+          } else {
+            setErrorMessage(gameSessionData.message || 'Error creating game session');
+          }
         }
       } else {
         setErrorMessage(data.message || 'Login failed');
       }
     } catch (error) {
+      console.error('Error during login:', error);
       setErrorMessage('An error occurred during login');
     }
   };
-  
+
   return (
     <div className="login-container">
       <form onSubmit={handleSubmit} className="login-form">
@@ -272,7 +250,7 @@ const Login = ({ onLogin }) => {
           <label>Username:</label>
           <input
             type="text"
-            value={username} 
+            value={username}
             onChange={(e) => setUsername(e.target.value)}
             placeholder="Enter your username"
             required
